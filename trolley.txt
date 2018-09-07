@@ -1,0 +1,114 @@
+% -------------- Scenario Generation
+
+sim(simName).
+0{performs(simName,A,T):action(A)}1:-time(T).
+
+% -------------- Domains 
+
+number(-100..100).
+time(0..6).
+agent(decider;bystander;overlooker;workers).
+object(G):-agent(G).
+nonInertial(on(overlooker,bridge(M));near(G,M)):-track(M),agent(G).
+positiveFluent(on(train,M);on(J,M);on(J,bridge(M));near(G,M)):-track(M),object(J),agent(G).
+track(t(L,H)):-lanes(L),length(H).
+lanes(main).
+lanes(side).
+close(main,side).
+length(0..5).
+buttonOn(t(main,0)).
+bridgeOver(t(main,0)).
+
+% -------------- Initial Situation
+
+initially(alive(G)):-agent(G).
+initially(near(decider,t(main,0))).
+initially(on(train,t(main,0))).
+initially(on(workers,t(main,3))).
+initially(on(bystander,t(side,1))).
+initially(on(overlooker,bridge(t(main,0)))).
+
+% -------------- Event Specification
+
+% Act: switch
+capable(decider,switch(H,L1,L2))						:-buttonOn(t(L1,H)),close(L1,L2).
+prec(on(train,t(L1,H)),act(G,switch(H,L1,L2)))          :-buttonOn(t(L1,H)),close(L1,L2),agent(G).
+prec(near(G,t(L1,H)),act(G,switch(H,L1,L2)))            :-buttonOn(t(L1,H)),close(L1,L2),agent(G).
+effect(act(G,switch(H,L1,L2)),neg(on(train,t(L1,H))))   :-buttonOn(t(L1,H)),close(L1,L2),agent(G).
+effect(act(G,switch(H,L1,L2)),on(train,t(L2,H)))        :-buttonOn(t(L1,H)),close(L1,L2),agent(G).
+
+% Act: push
+capable(decider,push(J,M))								:-bridgeOver(M),object(J).
+prec(on(J,bridge(M)),act(G,push(J,M)))					:-bridgeOver(M),object(J),agent(G).
+prec(near(G,M),act(G,push(J,M)))						:-bridgeOver(M),object(J),agent(G).
+effect(act(G,push(J,M)),on(J,M))						:-bridgeOver(M),object(J),agent(G).
+effect(act(G,push(J,M)),neg(on(J,bridge(M))))			:-bridgeOver(M),object(J),agent(G).
+
+% Auto: run
+auto(run(train,M))                                      :-track(M).
+prec(on(train,M),run(train,M))                          :-track(M).
+effect(run(train,t(L,H)),on(train,t(L,H+1)))            :-lanes(L),length(H).
+effect(run(train,M),neg(on(train,M)))         			:-track(M).
+
+% Auto: crash
+auto(crash(J,M))                                        :-object(J),track(M).
+prec(on(J,M),crash(J,M))                                :-object(J),track(M).
+prec(on(train,M),crash(J,M))                            :-object(J),track(M).
+effect(crash(J,M),neg(on(train,M)))                     :-object(J),track(M).
+effect(crash(J,M),neg(life))                            :-object(J),track(M).
+effect(crash(J,M),neg(on(J,M)))                         :-object(J),track(M).
+
+% Priorities
+priority(I,U):-volition(I),auto(U).
+priority(crash(J,M),run(train,M))                     	:-auto(crash(J,M)).
+
+% --------- Target Specification
+
+targetNumber(workers,5).
+targetNumber(overlooker,1).
+targetNumber(bystander,1).
+targetWeight(G,1):-agent(G).
+
+% --------- Modality Specification
+
+% rights
+right(life).
+modalityWeight(life,10).
+
+% --------- Ethical Event Specification
+
+impact(crash(G,M),G,neg(life),100):-agent(G),track(M).
+
+% -------------- Variant 1: Loop
+
+%effect(run(train,t(side,2)),on(train,t(main,2))).
+
+% -------------- Variant 2: Man in fron
+
+%object(rocks).
+%initially(on(rocks,t(side,2))).
+%effect(crash(J,M),neg(on(train,M))):-object(J),track(M),J!=bystander.
+%effect(crash(bystander,t(side,H),on(train,t(side,H)))):-length(H).
+
+% -------------- Variant 3:  Collapse bridge
+
+%object(rocks).
+%positiveFluent(broken(bridge(M))):-bridgeOver(M).
+
+% Act: breackSwitch
+%capable(decider,breackSwitch(bridge(M))):-bridgeOver(M).
+%prec(near(G,M),act(G,breackSwitch(bridge(M)))):-bridgeOver(M),agent(G).
+%effect(act(G,breackSwitch(bridge(M))),broken(bridge(M))):-bridgeOver(M),agent(G).
+%effect(act(G,breackSwitch(bridge(M))),on(rocks,M)):-bridgeOver(M),agent(G).
+
+% Auto: fall
+%auto(fall(G,M)):-bridgeOver(M),agent(G).
+%prec(on(G,bridge(M)),fall(G,M)):-bridgeOver(M),agent(G).
+%prec(broken(bridge(M)),fall(G,M)):-bridgeOver(M),agent(G).
+%effect(fall(G,M),neg(life)):-bridgeOver(M),agent(G).
+%effect(fall(G,M),neg(on(G,bridge(M)))):-bridgeOver(M),agent(G).
+
+
+
+
+

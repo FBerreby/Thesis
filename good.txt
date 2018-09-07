@@ -1,0 +1,26 @@
+% ---------------------------------------------------------------- %
+% ------------------- Model of the Good -------------------------- %
+% ---------------------------------------------------------------- %
+% -------------- ToG based on Rights ----------------------------- %
+
+target(G,N1*N2):-targetNumber(G,N1),targetWeight(G,N2).
+good(E,M,G,N1*N2*N3/100):-impact(E,G,M,N1),modalityWeight(M,N2),target(G,N3),right(M).
+bad(E,M,G,N1*N2*N3/100):-impact(E,G,neg(M),N1),modalityWeight(M,N2),target(G,N3),right(M).
+
+% -------------- ToG based on Hedonism --------------------------- %
+
+bad(E,pleasure,G,N1*N2):-impact(E,G,neg(pleasure),N1),target(G,N2).
+good(E,pleasure,G,N1*N2):-impact(E,G,pleasure,N1),target(G,N2).
+
+% -------------- ToG based on Values ----------------------------- %
+
+good(I,M,G,10):-display(I,M,G),value(M).
+
+% -------------- Weight ------------------------------------------ %
+
+weight(E,N1-N3):-N1=#sum[good(E,M,G,N2)=N2],N3=#sum[bad(E,M,G,N4)=N4],event(E).
+
+
+
+
+

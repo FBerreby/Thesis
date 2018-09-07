@@ -1,0 +1,61 @@
+% -------------- Scenario Generation
+
+sim(simName).
+0{performs(simName,A,T):action(A)}1:-time(T).
+
+% -------------- Domains 
+
+number(-100..100).
+time(0..6).
+agent(g(1);g(2);g(3);g(4);g(5);students).
+positiveFluent(invested(G);can(G,invest);can(G,donate)):-agent(G).
+nonInertial(can(G,invest);can(G,donate)):-agent(G).
+
+% -------------- Initial Situation 
+
+initially(can(g(1),invest)):-agent(G).
+initially(can(g(1),donate)):-agent(G).
+
+% -------------- Event Specification  
+
+% inTurn
+effect(act(g(N),X1),can(g(N+1),X2)):-agent(g(N)),actName(X1;X2).
+effect(omit(g(N),T),can(g(N+1),X)):-agent(g(N)),actName(X),time(T).
+effect(act(g(N),X1),neg(can(g(N),X2))):-agent(g(N)),actName(X1;X2).
+effect(omit(g(N),T),neg(can(g(N),X))):-agent(g(N)),actName(X),time(T).
+
+% Act: invest
+capable(g(1..5),invest).
+prec(can(G,invest),act(G,invest)):-agent(G).
+effect(act(G,invest),invested(G)):-agent(G).
+
+% Act: donate 
+capable(g(1..5),donate).
+prec(can(G,donate),act(G,donate)):-agent(G).
+
+% Auto: launch 
+auto(launch).
+prec(invested(G),launch):-capable(G,invest).
+effect(launch,neg(invested(G))):-capable(G,invest).
+
+% --------- Target Specification
+
+targetNumber(students,1).
+targetWeight(students,1).
+
+% --------- Modality Specification
+
+% rights
+right(education).
+modalityWeight(education,100).
+
+% rules
+rule(R):-instance(I,R).
+instance(O,letItBe):-omission(O).
+instance(act(G,X),X):-capable(G,X).
+
+% --------- Ethical Event Specification
+
+impact(launch,students,education,80).
+impact(act(G,donate),students,education,10):-agent(G).
+

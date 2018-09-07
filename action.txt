@@ -1,0 +1,55 @@
+% ---------------------------------------------------------------- %
+% -------------------- Action Model  ----------------------------- %
+% ---------------------------------------------------------------- %
+% ---------------------------------------------------------------- %
+% -------------- Basic Action Model ------------------------------ %
+% ---------------------------------------------------------------- %
+
+action(act(G,X)):-capable(G,X).
+volition(A):-action(A).
+volition(O):-omission(O).
+event(I):-volition(I).
+event(U):-auto(U).
+omission(omit(G,T)):-agent(G),time(T).
+
+% -------------- Event Effect Axioms ----------------------------- %
+
+initiates(S,E,P,T):-occurs(S,E,T),effect(E,P),positiveFluent(P).
+terminates(S,E,P,T):-occurs(S,E,T),effect(E,neg(P)).
+clipped(S,P,T):-terminates(S,E,P,T).
+holds(S,P,0):-initially(P),sim(S).
+holds(S,P,T+1):-initiates(S,E,P,T).
+holds(S,P,T+1):-holds(S,P,T),not clipped(S,P,T),not nonInertial(P),positiveFluent(P),time(T).
+holds(S,neg(P),T):-not holds(S,P,T),sim(S),positiveFluent(P),time(T).
+
+% -------------- Event Precondition Axioms ----------------------- %
+
+possible(S,E,T):-complete(S,E,T),auto(E). 
+possible(S,A,T):-complete(S,A,T),performs(S,A,T),action(A).
+:-performs(S,A,T),not complete(S,A,T).  
+overtaken(S,E1,T):-possible(S,E1,T),possible(S,E2,T),priority(E2,E1),E1!=E2.         
+occurs(S,E,T):-possible(S,E,T),not overtaken(S,E,T).
+
+% ---------------------------------------------------------------- %
+% -------------- Action Model with Omissions --------------------- %
+% ---------------------------------------------------------------- %
+
+% -------------- Action Model Update ----------------------------- %
+
+complete(S,U,T):-{not holds(S,F,T):prec(F,U)}0,sim(S),auto(U),time(T).
+actName(X):-capable(G,X).
+complete(S,act(G,X),T):-{not holds(S,F,T):prec(F,act(G,X))}0,not omitted(S,act(G,X),T-1),sim(S),time(T),action(act(G,X)).
+omitted(S,act(G,X),T):-complete(S,act(G,X),T),occurs(S,omit(G,T),T).
+complete(S,omit(G,T),T):-complete(S,act(G,X),T).
+possible(S,omit(G,T),T):-complete(S,omit(G,T),T),{occurs(S,act(G,X),T):action(act(G,X))}0.
+priority(omit(G,T),U):-occurs(S,omit(G,T),T),complete(S,U,T),auto(U).
+
+% -------------- Omission Effects  ------------------------------- %
+
+holds(S,P,T+1):-occurs(S,omit(G,T),T),holds(S,P,T),not clipped(S,P,T),nonInertial(P).
+effect(omit(G,T),P):-occurs(S,omit(G,T),T),complete(S,act(G,X),T),effect(act(G,X),neg(P)),not effect(omit(G,T),neg(P)).
+effect(omit(G,T),neg(P)):-occurs(S,omit(G,T),T),complete(S,act(G,X),T),effect(act(G,X),P),not effect(omit(G,T),P),positiveFluent(P).
+
+
+
+

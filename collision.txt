@@ -1,0 +1,119 @@
+% -------------- Scenario Generation
+
+sim(simName).
+0{performs(simName,A,T):action(A)}1:-time(T).
+
+% -------------- Domains 
+
+number(-100..100).
+time(0..7).
+agent(iris;driver).
+victim(driver).
+positiveFluent(hospital(G);dead(G);hurt(G);breathing(G);safe(G);treatment(G);needRehab(G)):-victim(G).
+nonInertial(treatment(G);needRehab(G);hospital(G)):-victim(G).
+priority(I,U):-volition(I),auto(U).
+
+% -------------- Initial Situation 
+
+initially(hurt(driver)).
+initially(breathing(driver)).
+
+% -------------- Event Specification  
+
+% Act: safety 
+capable(iris,safety(driver)).
+prec(breathing(G2),act(G1,safety(G2))):-agent(G1),victim(G2).
+prec(neg(safe(G2)),act(G1,safety(G2))):-agent(G1),victim(G2).
+effect(act(G1,safety(G2)),safe(G2)):-agent(G1),victim(G2).
+
+% Act: kill 
+capable(iris,kill(driver)).
+prec(breathing(G2),act(G1,kill(G2))):-agent(G1),victim(G2).
+prec(neg(safe(G2)),act(G1,kill(G2))):-agent(G1),victim(G2).
+effect(act(G1,kill(G2)),neg(breathing(G2))):-agent(G1),victim(G2).
+
+% Act: aid
+capable(iris,aid(driver)).
+prec(breathing(G2),act(G1,aid(G2))):-agent(G1),victim(G2).
+prec(hurt(G2),act(G1,aid(G2))):-agent(G1),victim(G2).
+prec(safe(G2),act(G1,aid(G2))):-agent(G1),victim(G2).
+effect(act(G1,aid(G2)),neg(hurt(G2))):-agent(G1),victim(G2).
+effect(act(G1,aid(G2)),treatment(G2)):-agent(G1),victim(G2).
+
+% Act: call
+capable(iris,call).
+prec(treatment(G2),act(G1,call)):-agent(G1),victim(G2).
+effect(act(G1,call),hospital(G2)):-agent(G1),victim(G2).
+
+% Auto: accident
+auto(accident(G)):-victim(G).
+prec(breathing(G),accident(G)):-victim(G).
+prec(neg(safe(G)),accident(G)):-victim(G).
+effect(accident(G),neg(breathing(G))):-victim(G).
+
+% Auto: death
+auto(death(G)):-victim(G).
+prec(neg(dead(G)),death(G)):-victim(G).
+prec(neg(breathing(G)),death(G)):-victim(G).
+effect(death(G),dead(G)):-victim(G).
+
+% Auto: decline
+auto(decline(G)):-victim(G).
+prec(breathing(G),decline(G)):-victim(G).
+prec(hurt(G),decline(G)):-victim(G).
+prec(safe(G),decline(G)):-victim(G).
+prec(neg(treatment(G)),decline(G)):-victim(G).
+effect(decline(G),neg(breathing(G))):-victim(G).
+
+% Auto: part recovery
+auto(partRecovery(G)):-victim(G).
+prec(neg(hospital(G)),partRecovery(G)):-victim(G). 
+prec(treatment(G),partRecovery(G)):-victim(G). 
+effect(partRecovery(G),needRehab(G)):-victim(G).
+
+% Act: rehab
+capable(driver,rehab).
+prec(needRehab(G),act(G,rehab)):-victim(G).
+effect(act(G,rehab),hospital(G)):-victim(G).
+
+% Auto: full recovery
+auto(fullRecovery(G)):-victim(G).
+prec(hospital(G),fullRecovery(G)):-victim(G).
+
+% Auto: limp
+auto(limp(G)):-victim(G).
+prec(needRehab(G),limp(G)):-victim(G).
+prec(neg(hospital(G)),limp(G)):-victim(G).
+
+% --------- Target Specification
+
+targetNumber(driver,1).
+targetWeight(driver,1).
+targetNumber(otherDriver,1).
+targetWeight(otherDriver,1).
+
+% --------- Modality Specification
+
+% rights
+right(health).
+right(dignity).
+modalityWeight(health,100).
+modalityWeight(dignity,20).
+
+% hedonism
+impact(partRecovery(G),G,neg(pleasure),10):-agent(G).   
+
+% values
+value(knowledge).
+value(determination).
+
+% --------- Ethical Event Specification
+
+impact(death(G),G,neg(health),100):-agent(G).     
+impact(accident(G),otherDriver,neg(health),60):-agent(G).   
+impact(decline(G),G,neg(dignity),50):-agent(G).   
+impact(limp(G),G,health,70):-agent(G).
+impact(limp(G),G,neg(dignity),70):-agent(G).
+impact(fullRecovery(G),G,health,100):-agent(G).   
+display(act(G1,aid(G2)),knowledge,G1):-agent(G1;G2).     
+display(act(G,rehab),determination,G):-agent(G). 

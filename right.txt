@@ -1,0 +1,155 @@
+% --------------------------------------------------------------- %
+% ----------------- Model of the Right -------------------------- %
+% --------------------------------------------------------------- %
+% --------------------------------------------------------------- %
+% -------------- Consequentialist Ethics ------------------------ %
+% --------------------------------------------------------------- %
+
+% -------------- Principle of Benefits Vs. Costs ---------------- %
+
+weightCons(S,T1,I1,E,N):-occurs(S,I1,T1),r(S,R,I2,T2,E),weight(E,N),allSupRel(R),volition(I1;I2),T1<=T2.
+weightAdded(S,T,I,N1):-occurs(S,I,T),N1=#sum[weightCons(S,T,I,E,N2)=N2],volition(I).
+
+weightPossible(S1,T,I,N,S2):-occurs(S1,I,T),occurs(S2,I,T),sameHistory(T,S1,S2),weightAdded(S2,T,I,N),volition(I).
+weightSum(S1,T,I,N1):-occurs(S1,I,T),N1=#sum[weightPossible(S1,T,I,N2,S2)=N2],volition(I).
+weightPaths(S1,T,I,N1):-occurs(S1,I,T),N1=#count{weightPossible(S1,T,I,N2,S2)},N1>0,volition(I).
+weightAv(S,T,I,((N1*10)/N2)):-weightSum(S,T,I,N1),weightPaths(S,T,I,N2),N1!=0,N2!=0.
+weightAv(S,T,I,0):-weightSum(S,T,I,0).
+alterViable(S1,T,I1,I2,S2):-occurs(S1,I1,T),complete(S1,I2,T),occurs(S2,I2,T),sameHistory(T,S1,S2),I1!=I2,volition(I1;I2).
+alterAdded(S1,T,I1,S2,N):-alterViable(S1,T,I1,I2,S2),weightAdded(S2,T,I2,N). 
+alterSum(S1,T,I,N1*10):-occurs(S1,I,T),N1=#sum[alterAdded(S1,T,I,S2,N2)=N2],volition(I).
+alterPaths(S1,T,I,N):-occurs(S1,I,T),N=#count{alterAdded(S1,T,I,S2,N2)},volition(I).    
+alterAv(S,T,I,N1/N2):-alterSum(S,T,I,N1),alterPaths(S,T,I,N2),N1!=0,N2!=0.              
+alterAv(S,T,I,0):-alterSum(S,T,I,0). 
+weightCompared(S,T,I,N1-N2):-weightAv(S,T,I,N1),alterAv(S,T,I,N2).
+
+imp(benefitsCosts,S,T,I):-occurs(S,I,T),weightCompared(S,T,I,N),N<0.
+per(benefitsCosts,S,T,I):-occurs(S,I,T),not imp(benefitsCosts,S,T,I),volition(I).
+
+simVol(S,I):-occurs(S,I,T),volition(I).
+simCount(S,N):-N=#count{simVol(S,I)},sim(S).
+simSum(S,N1):-N1=#sum[weightCompared(S,T,I,N2)=N2],sim(S).
+simWeightAv(S,N1/N2):-simSum(S,N1),simCount(S,N2),N1!=0,N2!=0.
+simWeightAv(S,0):-simSum(S,0).
+imp(benefitsCosts,S):-simWeightAv(S,N),N<0.
+per(benefitsCosts,S):-sim(S),not imp(benefitsCosts,S).
+
+% -------------- Act Utilitarianism ----------------------------- %
+
+notBestCons(S1,T,I,N1):-weightAdded(S1,T,I,N1),weightAdded(S2,T,I,N2),sameHistory(T,S1,S2),N1<N2.
+bestCons(S2,T,I,N):-weightAdded(S1,T,I,N),not notBestCons(S1,T,I,N),occurs(S2,I,T),sameHistory(T,S1,S2).
+imp(actUti,S1,T,I1):-alterViable(S1,T,I1,I2,S2),bestCons(S1,T,I1,N1),bestCons(S2,T,I2,N2),N1<N2. 
+per(actUti,S,T,I):-occurs(S,I,T),not imp(actUti,S,T,I),volition(I).
+
+imp(actUti,S):-imp(actUti,S,T,I).
+per(actUti,S):-not imp(actUti,S),sim(S).
+
+% -------------- Principle of Least Bad consequence ------------- % 
+
+notWorstCons(S1,T,I,N1):-weightAdded(S1,T,I,N1),weightAdded(S2,T,I,N2),sameHistory(T,S1,S2),N1>N2.
+worstCons(S2,T,I,N):-weightAdded(S1,T,I,N),not notWorstCons(S1,T,I,N),occurs(S2,I,T),sameHistory(T,S1,S2).
+imp(leastBad,S1,T,I1):-alterViable(S1,T,I1,I2,S2),worstCons(S1,T,I1,N1),worstCons(S2,T,I2,N2),N1<N2. 
+per(leastBad,S,T,I):-occurs(S,I,T),not imp(leastBad,S,T,I),volition(I).
+
+imp(leastBad,S):-imp(leastBad,S,T,I).
+per(leastBad,S):-sim(S),not imp(leastBad,S).
+
+% -------------- Prohibiting Purely Bad Volitions --------------- %
+
+goodCons(S,T,I):-valid(S,R,I,T,E),weight(E,N),N>0,allSupRel(R),volition(I).
+goodCons(S1,T,I1):-alterViable(S1,T,I1,I2,S2),valid(S2,R,I2,T,E),weight(E,N),N<0,allSupRel(R).
+badCons(S,T,I):-valid(S,R,I,T,E),weight(E,N),N<0,allSupRel(R),volition(I).
+badCons(S1,T,I1):-alterViable(S1,T,I1,I2,S2),valid(S2,R,I2,T,E),weight(E,N),N>0,allSupRel(R).
+
+goodCons(S,T,O):-notNecessary(S,R,exc,O,T,E),weight(E,N),N>0,allSupRel(R),omission(O).
+goodCons(S1,T,I):-alterViable(S1,T,I,O,S2),notNecessary(S2,R,exc,O,T,E),weight(E,N),N<0,allSupRel(R),omission(O).
+badCons(S,T,O):-notNecessary(S,R,exc,O,T,E),weight(E,N),N<0,allSupRel(R),omission(O).
+badCons(S1,T,I):-alterViable(S1,T,I,O,S2),notNecessary(S2,R,exc,O,T,E),weight(E,N),N>0,allSupRel(R),omission(O).
+
+imp(pureBad,S3,T,I):-badCons(S1,T,I),not goodCons(S2,T,I),sameHistory(T,S1,S2),sameHistory(T,S2,S3).
+per(pureBad,S,T,I):-occurs(S,I,T),not imp(pureBad,S,T,I),volition(I).
+
+imp(pureBad,S):-imp(pureBad,S,T,I),not per(pureBad,S,T,I).
+per(pureBad,S):-sim(S),not imp(pureBad,S).
+
+
+% -------------- Rule Utilitarianism ---------------------------- %
+
+notUniversal(S,R):-complete(S,I,T),not occurs(S,I,T),instance(I,R).
+universal(S,R):-not notUniversal(S,R),sim(S),rule(R).
+simEvents(S,E,T,N):-occurs(S,E,T),weight(E,N).
+simEndstate(S,N1):-N1=#sum[simEvents(S,E,T,N2)=N2],sim(S).
+ruleEndstate(S,R,N):-universal(S,R),simEndstate(S,N).
+ruleSum(R,N1):-N1=#sum[ruleEndstate(S,R,N2)=N2],rule(R).
+ruleCount(R,N1):-N1=#count{ruleEndstate(S,R,N2)},rule(R).
+ruleWeight(R,N1/N2):-ruleSum(R,N1),ruleCount(R,N2),N2!=0.
+ruleWeight(R,0):-ruleCount(R,0).
+imp(ruleUti,S1,T,I1):-alterViable(S1,T,I1,I2,S2),instance(I1,R1),ruleWeight(R1,N1),instance(I2,R2),ruleWeight(R2,N2),N1<N2.
+per(ruleUti,S,T,I):-occurs(S,I,T),instance(I,R),not imp(ruleUti,S,T,I),volition(I).
+imp(ruleUti,S):-imp(ruleUti,S,T,I).
+per(ruleUti,S):-sim(S),not imp(ruleUti,S).
+
+% --------------------------------------------------------------- %
+% -------------- Deontological Ethics --------------------------- %
+% --------------------------------------------------------------- %
+
+% -------------- Codes of Conduct ------------------------------- %
+
+imp(conduct,S,T,A):-action(A),r(S,causes,A,T,E),effect(E,neg(life)). 
+per(conduct,S,T,A):-action(A),occurs(S,A,T),not imp(conduct,S,T,A).
+imp(conduct,S):-imp(conduct,S,T,I).
+per(conduct,S):-sim(S),not imp(conduct,S).
+
+% -------------- Kantian Ethics --------------------------------- %
+
+imp(kant,S,T,A):-r(S,causes,A,T,E),impact(E,G,neg(M),N),action(A).
+imp(kant,S,T,A):-r(S,causes,A,T,E1),impact(E1,G,M,N),not aim(A,E1),action(A).
+per(kant,S,T,A):-action(A),occurs(S,A,T),not imp(kant,S,T,A).
+imp(kant,S):-imp(kant,S,T,I).
+per(kant,S):-sim(S),not imp(kant,S).
+	
+% -------------- Doctrine of Double Effect ---------------------- %
+
+imp(dde1,S,T,A):-occurs(S,A,T),bad(A,M,G,N),action(A). 
+imp(dde2,S,T1,A):-r(S,causes,A,T1,E1),r(S,causes,E1,T2,E2),weight(E1,N1),N1<0,weight(E2,N2),N2>0,action(A).
+imp(dde2,S,T1,A):-r(S,causes,A,T1,E1),r(S,prevents,E1,T2,E2),weight(E1,N1),N1<0,weight(E2,N2),N2<0,action(A).
+imp(dde2,S1,T1,A):-r(S1,prevents,A,T1,E1),r(S2,causes,O,T1,E1),r(S2,causes,E1,T2,E2),not canArise(S1,E2),sameHistory(T,S1,S2),weight(E1,N1),N1>0,weight(E2,N2),N2<0,T1<T2,action(A),omission(O).
+imp(dde2,S1,T1,A):-r(S1,prevents,A,T1,E1),r(S2,causes,O,T1,E1),r(S2,prevents,E1,T2,E2),canArise(S1,E2),sameHistory(T,S1,S2),weight(E1,N1),N1>0,weight(E2,N2),N2>0,T1<T2,action(A),omission(O).
+imp(dde3,S,T,A):-imp(benefitsCosts,S,T,A),action(A).
+per(dde,S,T,A):-occurs(S,A,T),not imp(dde1,S,T,A),not imp(dde2,S,T,A),not imp(dde3,S,T,A),action(A).
+imp(dde,S):-imp(dde1;dde2;dde3,S,T,I).
+per(dde,S):-sim(S),not imp(dde,S).
+
+% --------------------------------------------------------------- %
+% -------------- Ethics based on Causal Concepts ---------------- %
+% --------------------------------------------------------------- %
+
+% -------------- Doctrine of Doing and Allowing ----------------- %
+
+% -------------- Cause
+dda(S,causeHarm,A,T,E):-r(S,causes,A,T,E),weight(E,N),N<0,action(A).
+
+% -------------- Enable
+dda(S,enableHarm,A1,T,E):-r(S,enables,A1,T,A2),r(S,causes,A2,T,E),weight(E,N),N<0,action(A1;A2).
+
+% -------------- Omit to Prevent
+dda(S,omitPrevHarm,O,T,E):-r(S,causes,O,T,E),weight(E,N),N<0,notNecessary(S,causes,exc,O,T,E),omission(O).
+
+% -------------- Allow
+dda(S,allowHarm,A,T,E):-r(S,impedes(prevents),A,T,E),weight(E,N),N<0,action(A).
+dda(S,allowHarm,A,T,E):-r(S,impedes(excludes),A,T,E),weight(E,N),N<0,action(A).
+
+% -------------- Redirect
+comparable(E1,E2):-weight(E1,N1),weight(E2,N2),N1-N2<5,N2-N1<5.
+dda(S,redirectHarm,A,T,E1):-r(S,causes,A,T,E1),r(S,prevents,A,T,E2),weight(E1,N1),N1<0,weight(E1,N1),N1<0,comparable(E1,E2),action(A).
+
+% -------------- Accelerate
+dda(S1,accelerateHarm,A,T1,E):-notValid(S1,causes,A,T1,E),occurs(S1,E,T2),ovSim(S1,T1,A,S2),occurs(S2,E,T3),weight(E,N),N<0,T2<T3,action(A).
+
+
+
+
+
+
+
+
